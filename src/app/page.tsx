@@ -1,103 +1,90 @@
-import Image from "next/image";
+'use client'
+
+import Header from "../components/Header";
+import Footer from "../components/Footer";
+import CategoryContentSlider from "../components/CategoryContentSlider";
+import { useLatestContentsByCategory } from '../hooks/useLatestContentsByCategory'
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const { contentsByCategory, loading, error } = useLatestContentsByCategory(6)
+  
+  // 카테고리 정보
+  const categories = [
+    { slug: 'essay', name: '수필', icon: '📝', description: '마음을 담아 써내려간 수필 작품들' },
+    { slug: 'poetry', name: '한시', icon: '📜', description: '전통의 아름다움이 담긴 한시 작품들' },
+    { slug: 'photo', name: '사진', icon: '📸', description: '순간의 아름다움을 포착한 사진 작품들' },
+    { slug: 'calligraphy', name: '서화', icon: '🖼️', description: '붓끝에 담긴 정성과 예술 작품들' },
+    { slug: 'video', name: '영상', icon: '🎬', description: '움직이는 이야기가 담긴 영상 작품들' },
+  ]
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      {/* 헤더 */}
+      <Header />
+
+      {/* 메인 콘텐츠 */}
+      <main className="flex-1">
+        {/* 히어로 섹션 */}
+        <section className="bg-gradient-to-r from-blue-50 to-indigo-100 dark:from-gray-800 dark:to-gray-900 py-16 lg:py-20">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-6">
+                춘천답기 웹진
+              </h1>
+              <p className="text-xl sm:text-2xl text-gray-700 dark:text-gray-300 mb-12 max-w-4xl mx-auto">
+                춘천문화원 회원들의 소중한 창작물을 디지털 아카이브로 보존하고 공유합니다
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* 에러 상태 */}
+        {error && (
+          <section className="py-8">
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-red-700 dark:text-red-300">{error}</p>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* 로딩 상태 */}
+        {loading && (
+          <section className="py-16">
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400 mx-auto mb-4"></div>
+                <p className="text-gray-600 dark:text-gray-400">콘텐츠를 불러오고 있습니다...</p>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* 카테고리별 콘텐츠 슬라이더 */}
+        {!loading && !error && (
+          <>
+            {categories.map((category) => (
+              <CategoryContentSlider
+                key={category.slug}
+                contents={contentsByCategory[category.slug] || []}
+                categoryName={category.name}
+                categorySlug={category.slug}
+                categoryIcon={category.icon}
+              />
+            ))}
+          </>
+        )}
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+      {/* 푸터 */}
+      <Footer />
     </div>
   );
 }
