@@ -20,6 +20,8 @@
     "@tiptap/pm": "^3.4.2",
     "@tiptap/react": "^3.4.2",
     "@tiptap/starter-kit": "^3.4.2",
+    "@types/bcryptjs": "^2.4.6",
+    "bcryptjs": "^3.0.2",
     "browser-image-compression": "^2.0.2",
     "next": "15.5.3",
     "react": "19.1.0",

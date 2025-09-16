@@ -315,3 +315,78 @@ export interface ValidationError extends ApiError {
   field: string;
   value: unknown;
 }
+
+// ===== 댓글 시스템 타입 =====
+
+// 댓글 기본 타입
+export interface Comment {
+  id: string;
+  content_id: string;
+  user_id: string;
+  user_name: string;
+  user_email: string;
+  user_avatar?: string;
+  body: string;
+  created_at: string;
+  updated_at: string;
+  is_reported: boolean;
+  is_deleted: boolean;
+  password_hash: string; // 댓글 작성자 비밀번호 해시
+}
+
+// 댓글 생성 파라미터
+export interface CommentCreateParams {
+  content_id: string;
+  user_name: string;
+  password: string;
+  body: string;
+}
+
+// 댓글 수정 파라미터
+export interface CommentUpdateParams {
+  body: string;
+  password: string; // 인증용 비밀번호
+}
+
+// 댓글 삭제 파라미터
+export interface CommentDeleteParams {
+  password: string; // 인증용 비밀번호
+}
+
+// 비밀번호 확인 파라미터
+export interface CommentAuthParams {
+  comment_id: string;
+  password: string;
+}
+
+// 사용자 타입
+export interface User {
+  id: string;
+  email: string;
+  name?: string;
+  avatar_url?: string;
+  provider?: string;
+}
+
+// 댓글 목록 조회 파라미터
+export interface CommentListParams {
+  content_id: string;
+  page?: number;
+  limit?: number;
+  include_deleted?: boolean; // 관리자용
+}
+
+// 댓글 응답 타입
+export interface CommentResponse {
+  data: Comment | null;
+  error: string | null;
+}
+
+// 댓글 목록 응답
+export interface CommentsResponse {
+  data: Comment[] | null;
+  error: string | null;
+  count?: number;
+  meta?: PaginationMeta;
+}
+

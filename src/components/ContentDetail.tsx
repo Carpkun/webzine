@@ -18,6 +18,7 @@ import {
 import { useContentContext } from '../contexts/ContentContext'
 import PoetryToggle from './PoetryToggle'
 import LikeButton from './LikeButton'
+import CommentSection from './comments/CommentSection'
 import { 
   isValidImageUrl, 
   // getImageProps,
@@ -304,6 +305,12 @@ export default function ContentDetail({ content }: ContentDetailProps) {
           공유
         </button>
       </div>
+      
+      {/* 댓글 섹션 */}
+      <CommentSection 
+        contentId={content.id} 
+        className="mt-8"
+      />
     </article>
   )
 }

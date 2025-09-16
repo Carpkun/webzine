@@ -14,8 +14,9 @@ const CategoryManager = dynamic(() => import('../../components/admin/CategoryMan
 const ContentList = dynamic(() => import('../../components/admin/ContentList'), { ssr: false })
 const ContentForm = dynamic(() => import('../../components/admin/ContentForm'), { ssr: false })
 const MediaLibrary = dynamic(() => import('../../components/media/MediaLibrary'), { ssr: false })
+const ReportedCommentsManager = dynamic(() => import('../../components/admin/ReportedCommentsManager'), { ssr: false })
 
-type ViewMode = 'dashboard' | 'manage' | 'create' | 'edit' | 'media'
+type ViewMode = 'dashboard' | 'manage' | 'create' | 'edit' | 'media' | 'comments'
 
 export default function AdminPage() {
   const { user, signOut } = useAuth()
@@ -181,6 +182,7 @@ export default function AdminPage() {
       case 'create': return '새 콘텐츠 작성'
       case 'edit': return '콘텐츠 수정'
       case 'media': return '미디어 라이브러리'
+      case 'comments': return '댓글 관리'
       default: return '관리자 대시보드'
     }
   }
@@ -277,6 +279,16 @@ export default function AdminPage() {
               }`}
             >
               📷 미디어 관리
+            </button>
+            <button
+              onClick={() => handleViewChange('comments')}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                currentView === 'comments'
+                  ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-gray-800'
+              }`}
+            >
+              💬 댓글 관리
             </button>
           </div>
         </div>
@@ -489,6 +501,35 @@ export default function AdminPage() {
               onCancel={() => handleViewChange('manage')}
               loading={loading}
             />
+          </div>
+        )}
+
+        {currentView === 'comments' && (
+          <div className="max-w-6xl mx-auto">
+            {/* 브레드크럼 */}
+            <nav className="flex mb-6" aria-label="Breadcrumb">
+              <ol className="inline-flex items-center space-x-1 md:space-x-3">
+                <li className="inline-flex items-center">
+                  <button
+                    onClick={() => handleViewChange('dashboard')}
+                    className="inline-flex items-center text-sm font-medium text-gray-700 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-500"
+                  >
+                    🏠 대시보드
+                  </button>
+                </li>
+                <li>
+                  <div className="flex items-center">
+                    <svg className="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                    </svg>
+                    <span className="ml-1 text-sm font-medium text-gray-500 dark:text-gray-400">댓글 관리</span>
+                  </div>
+                </li>
+              </ol>
+            </nav>
+
+            {/* 신고된 댓글 관리자 */}
+            <ReportedCommentsManager key={`comments-manager-${refreshTrigger}`} />
           </div>
         )}
       </div>
