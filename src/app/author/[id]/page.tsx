@@ -6,6 +6,7 @@ import Header from '../../../components/Header'
 import Footer from '../../../components/Footer'
 import ServerContentCard from '../../../components/ServerContentCard'
 import { getCategoryDisplayName, getCategoryIcon } from '../../../lib/contentUtils'
+import { createClient } from '@supabase/supabase-js'
 
 interface AuthorPageProps {
   params: Promise<{ id: string }>
@@ -16,7 +17,6 @@ interface AuthorPageProps {
 async function getAuthorData(id: string, page: number = 1, category?: string) {
   try {
     // 작가별 콘텐츠 조회 - 상대 경로 사용 (서버 사이드에서 내부 API 호출)
-    const { createClient } = require('@supabase/supabase-js')
     
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!

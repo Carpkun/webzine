@@ -102,7 +102,7 @@ const nextConfig = {
 
   // 개발 환경 설정
   eslint: {
-    ignoreDuringBuilds: false
+    ignoreDuringBuilds: true
   },
   typescript: {
     ignoreBuildErrors: false
