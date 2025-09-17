@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { ContentUpdateParams } from '../../../../../../lib/types'
+import { requireAdmin, createAuthErrorResponse } from '../../../../../../lib/auth-middleware'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -14,30 +15,13 @@ export async function GET(
 ) {
   const { id } = await params
   try {
-    // Authorization 헤더에서 토큰 추출
-    const authHeader = request.headers.get('authorization')
-    
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
+    // 관리자 권한 검증
+    const authResult = await requireAdmin(request)
+    if (!authResult.isAuthenticated || !authResult.isAdmin) {
+      return createAuthErrorResponse(authResult)
     }
-    
-    const token = authHeader.split(' ')[1]
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
-    
-    if (authError || !user) {
-      return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
-    }
-    
-    // 사용자 토큰으로 인증된 클라이언트 생성
-    const supabaseWithAuth = createClient(supabaseUrl, supabaseServiceKey, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      }
-    })
 
-    const { data, error } = await supabaseWithAuth
+    const { data, error } = await supabaseAdmin
       .from('contents')
       .select('*')
       .eq('id', id)
@@ -65,33 +49,16 @@ export async function PUT(
 ) {
   const { id } = await params
   try {
-    // Authorization 헤더에서 토큰 추출
-    const authHeader = request.headers.get('authorization')
-    
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
+    // 관리자 권한 검증
+    const authResult = await requireAdmin(request)
+    if (!authResult.isAuthenticated || !authResult.isAdmin) {
+      return createAuthErrorResponse(authResult)
     }
-    
-    const token = authHeader.split(' ')[1]
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
-    
-    if (authError || !user) {
-      return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
-    }
-    
-    // 사용자 토큰으로 인증된 클라이언트 생성
-    const supabaseWithAuth = createClient(supabaseUrl, supabaseServiceKey, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      }
-    })
 
     const body: Partial<ContentUpdateParams> = await request.json()
     
     // 기존 콘텐츠 확인
-    const { data: existingContent, error: fetchError } = await supabaseWithAuth
+    const { data: existingContent, error: fetchError } = await supabaseAdmin
       .from('contents')
       .select('*')
       .eq('id', id)
@@ -136,9 +103,39 @@ export async function PUT(
       }
     }
 
+    // author_id 처리 (작가 정보가 변경된 경우)
+    let finalAuthorId = body.author_id !== undefined ? body.author_id : existingContent.author_id
+    let finalAuthorName = body.author_name !== undefined ? body.author_name : existingContent.author_name
+    
+    if (!finalAuthorId && finalAuthorName && body.author_name) {
+      // author_name으로 기존 작가 찾기
+      const { data: existingAuthor } = await supabaseAdmin
+        .from('authors')
+        .select('id, name')
+        .eq('name', finalAuthorName.trim())
+        .single()
+      
+      if (existingAuthor) {
+        finalAuthorId = existingAuthor.id
+      } else {
+        // 새 작가 생성
+        const { data: newAuthor, error: authorError } = await supabaseAdmin
+          .from('authors')
+          .insert([{ name: finalAuthorName.trim() }])
+          .select()
+          .single()
+        
+        if (!authorError && newAuthor) {
+          finalAuthorId = newAuthor.id
+        }
+      }
+    }
+
     // slug 업데이트 (제목이 변경된 경우)
     const updateData: Record<string, unknown> = {
       ...body,
+      author_id: finalAuthorId,
+      author_name: finalAuthorName,
       updated_at: new Date().toISOString()
     }
 
@@ -150,7 +147,7 @@ export async function PUT(
         .substring(0, 50)
     }
 
-    const { data, error } = await supabaseWithAuth
+    const { data, error } = await supabaseAdmin
       .from('contents')
       .update(updateData)
       .eq('id', id)
@@ -180,33 +177,16 @@ export async function DELETE(
 ) {
   const { id } = await params
   try {
-    // Authorization 헤더에서 토큰 추출
-    const authHeader = request.headers.get('authorization')
-    
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
+    // 관리자 권한 검증
+    const authResult = await requireAdmin(request)
+    if (!authResult.isAuthenticated || !authResult.isAdmin) {
+      return createAuthErrorResponse(authResult)
     }
-    
-    const token = authHeader.split(' ')[1]
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
-    
-    if (authError || !user) {
-      return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
-    }
-    
-    // 사용자 토큰으로 인증된 클라이언트 생성
-    const supabaseWithAuth = createClient(supabaseUrl, supabaseServiceKey, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      }
-    })
 
-    // 기존 콘텐츠 확인
-    const { data: existingContent, error: fetchError } = await supabaseWithAuth
+    // 기존 콘텐츠 확인 (작가 정보 포함)
+    const { data: existingContent, error: fetchError } = await supabaseAdmin
       .from('contents')
-      .select('title')
+      .select('title, author_id, author_name')
       .eq('id', id)
       .single()
 
@@ -214,14 +194,71 @@ export async function DELETE(
       return NextResponse.json({ error: '콘텐츠를 찾을 수 없습니다.' }, { status: 404 })
     }
 
-    const { error } = await supabaseWithAuth
+    console.log('🗑️ 콘텐츠 삭제 시작:', {
+      id,
+      title: existingContent.title,
+      author_id: existingContent.author_id,
+      author_name: existingContent.author_name
+    })
+
+    // 1. 해당 콘텐츠의 댓글 먼저 삭제
+    const { error: commentsDeleteError } = await supabaseAdmin
+      .from('comments')
+      .delete()
+      .eq('content_id', id)
+    
+    if (commentsDeleteError) {
+      console.error('댓글 삭제 오류:', commentsDeleteError)
+      // 댓글 삭제 실패해도 콘텐츠 삭제는 계속 진행
+    } else {
+      console.log('✅ 관련 댓글 삭제 완료')
+    }
+
+    // 2. 콘텐츠 삭제
+    const { error: contentDeleteError } = await supabaseAdmin
       .from('contents')
       .delete()
       .eq('id', id)
 
-    if (error) {
-      console.error('콘텐츠 삭제 오류:', error)
+    if (contentDeleteError) {
+      console.error('콘텐츠 삭제 오류:', contentDeleteError)
       return NextResponse.json({ error: '콘텐츠 삭제에 실패했습니다.' }, { status: 500 })
+    }
+    
+    console.log('✅ 콘텐츠 삭제 완료')
+
+    // 3. 작가의 다른 콘텐츠가 있는지 확인하고, 없으면 작가도 삭제
+    if (existingContent.author_id) {
+      const { data: remainingContents, error: countError } = await supabaseAdmin
+        .from('contents')
+        .select('id', { count: 'exact', head: true })
+        .eq('author_id', existingContent.author_id)
+      
+      if (countError) {
+        console.error('작가의 남은 콘텐츠 확인 오류:', countError)
+      } else {
+        const remainingCount = remainingContents || 0
+        console.log(`📊 작가 "${existingContent.author_name}"의 남은 콘텐츠 수:`, remainingCount)
+        
+        if (remainingCount === 0) {
+          // 작가의 마지막 콘텐츠였으므로 작가도 삭제
+          const { error: authorDeleteError } = await supabaseAdmin
+            .from('authors')
+            .delete()
+            .eq('id', existingContent.author_id)
+          
+          if (authorDeleteError) {
+            console.error('작가 삭제 오류:', authorDeleteError)
+            // 작가 삭제 실패해도 콘텐츠는 이미 삭제되었으므로 성공 응답
+          } else {
+            console.log(`✅ 작가 "${existingContent.author_name}" 삭제 완료 (마지막 콘텐츠)`)
+          }
+        } else {
+          console.log(`📝 작가 "${existingContent.author_name}"는 ${remainingCount}개의 콘텐츠가 남아있어서 유지`)
+        }
+      }
+    } else {
+      console.log('ℹ️ author_id가 없는 콘텐츠 (레거시 데이터)')
     }
 
     return NextResponse.json({ 

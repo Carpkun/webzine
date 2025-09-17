@@ -2,8 +2,9 @@ import { ContentCategory } from '../../lib/types'
 
 interface CategoryIconProps {
   category: ContentCategory
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
   showLabel?: boolean
+  className?: string
 }
 
 const categoryConfig = {
@@ -47,10 +48,11 @@ const categoryConfig = {
 const sizeConfig = {
   sm: { icon: 'text-lg', padding: 'p-1.5', text: 'text-xs' },
   md: { icon: 'text-xl', padding: 'p-2', text: 'text-sm' },
-  lg: { icon: 'text-2xl', padding: 'p-3', text: 'text-base' }
+  lg: { icon: 'text-2xl', padding: 'p-3', text: 'text-base' },
+  xl: { icon: 'text-4xl', padding: 'p-4', text: 'text-lg' }
 }
 
-export default function CategoryIcon({ category, size = 'md', showLabel = true }: CategoryIconProps) {
+export default function CategoryIcon({ category, size = 'md', showLabel = true, className = '' }: CategoryIconProps) {
   const config = categoryConfig[category]
   const sizeClass = sizeConfig[size]
 
@@ -59,6 +61,7 @@ export default function CategoryIcon({ category, size = 'md', showLabel = true }
       inline-flex items-center space-x-2 rounded-lg border
       ${config.bgColor} ${config.borderColor}
       ${sizeClass.padding}
+      ${className}
     `}>
       <span className={`${sizeClass.icon}`}>
         {config.icon}

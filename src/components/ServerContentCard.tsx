@@ -9,7 +9,6 @@ import {
   isVideoContent 
 } from '../../lib/types'
 import CategoryIcon, { categoryConfig } from './CategoryIcon'
-import { useContentContext } from '../contexts/ContentContext'
 import {
   isValidImageUrl,
   getImageProps,
@@ -19,20 +18,18 @@ import {
 } from '../utils/imageOptimization'
 import { generatePreviewText, stripHtmlTags } from '../utils/htmlUtils'
 
-interface ContentCardProps {
+interface ServerContentCardProps {
   content: Content
   priority?: boolean
   showCategory?: boolean
 }
 
-function ContentCard({ content, showCategory = true }: ContentCardProps) {
-  const { getContentStats } = useContentContext()
+function ServerContentCard({ content, showCategory = true }: ServerContentCardProps) {
   const categoryStyle = useMemo(() => categoryConfig[content.category], [content.category])
   
-  // 실시간 업데이트된 좋아요/조회수 가져오기
-  const currentStats = getContentStats(content.id)
-  const currentLikesCount = currentStats?.likes_count ?? content.likes_count
-  const currentViewCount = currentStats?.view_count ?? content.view_count
+  // 서버 사이드에서는 원본 stats 사용 (실시간 업데이트 없음)
+  const currentLikesCount = content.likes_count
+  const currentViewCount = content.view_count
   
   // 내용 미리보기 생성 (카테고리별로 다르게)
   const previewText = useMemo(() => {
@@ -201,8 +198,9 @@ function ContentCard({ content, showCategory = true }: ContentCardProps) {
                   `}>
                     <CategoryIcon 
                       category={content.category} 
-                      size="lg" 
+                      size="xl" 
                       showLabel={false} 
+                      className="text-white drop-shadow-lg"
                     />
                   </div>
                 </>
@@ -212,27 +210,65 @@ function ContentCard({ content, showCategory = true }: ContentCardProps) {
           
           {/* 카테고리 배지 */}
           {showCategory && (
-            <div className="absolute top-3 right-3">
-              <CategoryIcon 
-                category={content.category} 
-                size="sm" 
-                showLabel={false}
-              />
+            <div className="absolute top-3 left-3">
+              <div className={`
+                px-2 py-1 rounded-full text-xs font-medium
+                ${categoryStyle.bgColor} ${categoryStyle.textColor}
+                backdrop-blur-sm bg-opacity-90
+                group-hover:scale-105 transition-transform
+              `}>
+                <CategoryIcon 
+                  category={content.category} 
+                  size="sm" 
+                  showLabel={true} 
+                  className="inline"
+                />
+              </div>
             </div>
           )}
         </div>
-
+        
         {/* 콘텐츠 정보 */}
-        <div className="p-4 flex flex-col h-full">
-          {/* 제목 */}
-          <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-2 group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-            {content.title}
-          </h3>
-
-          {/* 작성자와 날짜 */}
-          <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mb-3">
-            <span className="font-medium">{content.author_name}</span>
-            <time dateTime={content.created_at}>
+        <div className="p-4 flex flex-col h-[calc(100%-192px)]">
+          <div className="flex-1">
+            {/* 제목 */}
+            <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-2 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+              {content.title}
+            </h3>
+            
+            {/* 작가 */}
+            <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+              <span className="font-medium">{content.author_name || '익명'}</span>
+            </div>
+            
+            {/* 미리보기 텍스트 */}
+            <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 leading-relaxed mb-3">
+              {previewText}
+            </p>
+            
+            {/* 특화 정보 */}
+            {renderSpecialInfo()}
+          </div>
+          
+          {/* 하단 메타 정보 */}
+          <div className="flex items-center justify-between pt-3 mt-auto border-t border-gray-100 dark:border-gray-700">
+            <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+              <span className="flex items-center gap-1">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                {currentViewCount}
+              </span>
+              <span className="flex items-center gap-1">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+                {currentLikesCount}
+              </span>
+            </div>
+            
+            <time className="text-xs text-gray-500 dark:text-gray-400">
               {new Date(content.created_at).toLocaleDateString('ko-KR', {
                 year: 'numeric',
                 month: 'short',
@@ -240,34 +276,10 @@ function ContentCard({ content, showCategory = true }: ContentCardProps) {
               })}
             </time>
           </div>
-
-          {/* 내용 미리보기 */}
-          <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed mb-4 flex-1">
-            {previewText}
-          </p>
-
-          {/* 특화 정보 */}
-          {renderSpecialInfo()}
-
-          {/* 하단 메타 정보 */}
-          <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700 mt-auto">
-            <div className="flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
-              <span className="flex items-center transition-all duration-300">
-                👁️ <span className="ml-1 font-medium">{currentViewCount}</span>
-              </span>
-              <span className="flex items-center transition-all duration-300">
-                ❤️ <span className="ml-1 font-medium">{currentLikesCount}</span>
-              </span>
-            </div>
-            
-            <div className="flex items-center text-xs text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors">
-              자세히 보기 →
-            </div>
-          </div>
         </div>
       </article>
     </Link>
   )
 }
 
-export default memo(ContentCard)
+export default memo(ServerContentCard)

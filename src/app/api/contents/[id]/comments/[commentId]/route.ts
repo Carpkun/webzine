@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { createClient, createAdminClient } from '../../../../../../../lib/supabase/server'
 import { CommentDeleteParams } from '../../../../../../../lib/types'
+import { verifyAuth } from '../../../../../../../lib/auth-middleware'
 
 // DELETE - 댓글 삭제 (소프트 삭제)
 export async function DELETE(
@@ -35,25 +36,28 @@ export async function DELETE(
       )
     }
     
-    // 기본 유효성 검사
-    if (!body || !body.password || body.password.trim().length === 0) {
-      console.log('5. 비밀번호 유효성 검사 실패')
-      return NextResponse.json(
-        { error: '비밀번호를 입력해주세요.' },
-        { status: 400 }
-      )
+    // 관리자 권한 확인
+    const authResult = await verifyAuth(request)
+    const isAdmin = authResult.isAdmin
+    
+    console.log('5. 인증 결과:', { 
+      isAuthenticated: authResult.isAuthenticated, 
+      isAdmin: isAdmin 
+    })
+    
+    // 관리자가 아닌 경우 비밀번호 필수
+    if (!isAdmin) {
+      if (!body || !body.password || body.password.trim().length === 0) {
+        console.log('6. 비밀번호 유효성 검사 실패')
+        return NextResponse.json(
+          { error: '비밀번호를 입력해주세요.' },
+          { status: 400 }
+        )
+      }
+      console.log('6. 비밀번호 유효성 검사 통과')
+    } else {
+      console.log('6. 관리자 권한으로 비밀번호 검증 스킵')
     }
-    
-    console.log('5. 비밀번호 유효성 검사 통과, 길이:', body.password.length)
-    
-    // 인증 확인 (임시로 스킵, 추후 소셜 로그인 구현시 활성화)
-    // const { data: { user }, error: authError } = await supabase.auth.getUser()
-    // if (authError || !user) {
-    //   return NextResponse.json(
-    //     { error: '로그인이 필요합니다.' },
-    //     { status: 401 }
-    //   )
-    // }
 
     // 댓글 존재 확인
     console.log('6. 댓글 조회 시작')
@@ -79,32 +83,36 @@ export async function DELETE(
       )
     }
 
-    // 비밀번호 확인
-    console.log('9. 비밀번호 비교 시작')
-    console.log('   - 입력 비밀번호:', body.password)
-    console.log('   - 저장된 해시:', comment.password_hash.substring(0, 20) + '...')
-    
-    let isPasswordValid = false
-    try {
-      isPasswordValid = await bcrypt.compare(body.password, comment.password_hash)
-      console.log('10. 비밀번호 비교 결과:', isPasswordValid)
-    } catch (error) {
-      console.error('11. 비밀번호 확인 오류:', error)
-      return NextResponse.json(
-        { error: '비밀번호 확인 중 오류가 발생했습니다.' },
-        { status: 500 }
-      )
-    }
+    // 관리자가 아닌 경우만 비밀번호 확인
+    if (!isAdmin) {
+      console.log('9. 비밀번호 비교 시작')
+      console.log('   - 입력 비밀번호:', body.password)
+      console.log('   - 저장된 해시:', comment.password_hash.substring(0, 20) + '...')
+      
+      let isPasswordValid = false
+      try {
+        isPasswordValid = await bcrypt.compare(body.password, comment.password_hash)
+        console.log('10. 비밀번호 비교 결과:', isPasswordValid)
+      } catch (error) {
+        console.error('11. 비밀번호 확인 오류:', error)
+        return NextResponse.json(
+          { error: '비밀번호 확인 중 오류가 발생했습니다.' },
+          { status: 500 }
+        )
+      }
 
-    if (!isPasswordValid) {
-      console.log('12. 비밀번호 비교 실패 - 인증 거부')
-      return NextResponse.json(
-        { error: '비밀번호가 일치하지 않습니다.' },
-        { status: 401 }
-      )
+      if (!isPasswordValid) {
+        console.log('12. 비밀번호 비교 실패 - 인증 거부')
+        return NextResponse.json(
+          { error: '비밀번호가 일치하지 않습니다.' },
+          { status: 401 }
+        )
+      }
+      
+      console.log('13. 비밀번호 비교 성공 - 삭제 진행')
+    } else {
+      console.log('9. 관리자 권한으로 비밀번호 검증 스킵 - 삭제 진행')
     }
-    
-    console.log('13. 비밀번호 비교 성공 - 삭제 진행')
 
     // 소프트 삭제 (is_deleted 플래그 설정) - 관리자 클라이언트 사용
     console.log('14. 관리자 권한으로 소프트 삭제 수행')

@@ -4,12 +4,14 @@ import { useState } from 'react'
 import { ContentCategory, ContentCreateParams, Content, VideoPlatform } from '../../../lib/types'
 import TiptapEditor from '../editor/TiptapEditor'
 import CategoryImageUpload from './CategoryImageUpload'
+import AuthorSelector from './AuthorSelector'
 
 interface ContentFormProps {
   mode: 'create' | 'edit'
   initialData?: Content
   onSubmit: (data: ContentCreateParams & { id?: string }) => Promise<void>
   onCancel: () => void
+  onNavigateToAuthors?: () => void
   loading?: boolean
 }
 
@@ -31,14 +33,16 @@ export default function ContentForm({
   mode, 
   initialData, 
   onSubmit, 
-  onCancel, 
+  onCancel,
+  onNavigateToAuthors,
   loading = false 
 }: ContentFormProps) {
-  const [formData, setFormData] = useState<ContentCreateParams>({
+  const [formData, setFormData] = useState<ContentCreateParams & { author_id?: string | null }>({
     title: initialData?.title || '',
     content: initialData?.content || '',
     category: initialData?.category || 'essay',
     author_name: initialData?.author_name || '',
+    author_id: initialData?.author_id || null,
     is_published: initialData?.is_published || false,
     featured: initialData?.featured || false,
     meta_description: initialData?.meta_description || '',
@@ -83,8 +87,8 @@ export default function ContentForm({
     if (!formData.content.trim()) {
       newErrors.content = '내용을 입력해주세요.'
     }
-    if (!formData.author_name.trim()) {
-      newErrors.author_name = '작성자를 입력해주세요.'
+    if (!formData.author_id && !formData.author_name.trim()) {
+      newErrors.author_name = '작성자를 선택해주세요.'
     }
 
     // 카테고리별 필수 필드 검증
@@ -201,22 +205,29 @@ export default function ContentForm({
             )}
           </div>
 
-          {/* 작성자 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              작성자 *
-            </label>
-            <input
-              type="text"
-              value={formData.author_name}
-              onChange={(e) => handleChange('author_name', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-              placeholder="작성자 이름을 입력하세요"
-            />
-            {errors.author_name && (
-              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.author_name}</p>
-            )}
-          </div>
+          {/* 작성자 선택 */}
+          <AuthorSelector
+            selectedAuthorId={formData.author_id}
+            selectedAuthorName={formData.author_name}
+            onAuthorSelect={(authorId, authorName) => {
+              setFormData(prev => ({
+                ...prev,
+                author_id: authorId,
+                author_name: authorName
+              }))
+              
+              // 에러 클리어
+              if (errors.author_name) {
+                setErrors(prev => {
+                  const newErrors = { ...prev }
+                  delete newErrors.author_name
+                  return newErrors
+                })
+              }
+            }}
+            onNavigateToAuthors={onNavigateToAuthors}
+            error={errors.author_name}
+          />
         </div>
 
         {/* 카테고리별 특화 필드 */}

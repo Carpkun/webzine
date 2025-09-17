@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { Comment, CommentCreateParams, CommentsResponse } from '../../../../../../lib/types'
+import { validateAndSanitizeComment, validateAndSanitizeAuthor, validatePassword, sanitizeText } from '../../../../../../lib/validation'
 
 // 스팸 방지 시스템
 interface SpamCheckResult {
@@ -150,52 +151,40 @@ export async function POST(
 ) {
   try {
     const { id: contentId } = await params
-    const body: CommentCreateParams = await request.json()
+    const rawBody = await request.json()
     const clientIP = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
 
-    // 1. 기본 유효성 검사
-    if (!body.user_name || body.user_name.trim().length === 0) {
+    // 1. 데이터 검증 및 sanitization
+    const sanitizedUserName = validateAndSanitizeAuthor(rawBody.user_name, 20)
+    if (!sanitizedUserName) {
       return NextResponse.json(
-        { error: '사용자명을 입력해주세요.' },
+        { error: '사용자명이 올바르지 않습니다. (한글/영문/숫자만 허용, 2-20자)' },
         { status: 400 }
       )
     }
 
-    if (!body.password || body.password.trim().length === 0) {
+    const passwordValidation = validatePassword(rawBody.password)
+    if (!passwordValidation.isValid) {
       return NextResponse.json(
-        { error: '비밀번호를 입력해주세요.' },
+        { error: passwordValidation.message },
         { status: 400 }
       )
     }
 
-    if (!body.body || body.body.trim().length === 0) {
+    const sanitizedContent = validateAndSanitizeComment(rawBody.body, 1000)
+    if (!sanitizedContent) {
       return NextResponse.json(
-        { error: '댓글 내용을 입력해주세요.' },
+        { error: '댓글 내용이 올바르지 않습니다. (5-1000자)' },
         { status: 400 }
       )
     }
-
-    // 사용자명 길이 검사
-    if (body.user_name.trim().length < 2) {
-      return NextResponse.json(
-        { error: '사용자명은 2자 이상 입력해주세요.' },
-        { status: 400 }
-      )
-    }
-
-    if (body.user_name.trim().length > 20) {
-      return NextResponse.json(
-        { error: '사용자명은 20자 이하로 입력해주세요.' },
-        { status: 400 }
-      )
-    }
-
-    // 비밀번호 길이 검사
-    if (body.password.length < 4) {
-      return NextResponse.json(
-        { error: '비밀번호는 4자 이상 입력해주세요.' },
-        { status: 400 }
-      )
+    
+    // sanitized 데이터로 body 재구성
+    const body: CommentCreateParams = {
+      user_name: sanitizedUserName,
+      password: rawBody.password, // 비밀번호는 해시 전에 원본 사용
+      body: sanitizedContent,
+      user_email: rawBody.user_email ? sanitizeText(rawBody.user_email) : undefined
     }
 
     if (body.password.length > 50) {

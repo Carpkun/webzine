@@ -66,5 +66,18 @@ export const adminAPI = {
       method: 'PATCH',
       body: JSON.stringify({ action, value })
     })
+  },
+
+  // 작가 목록 조회
+  getAuthors: () => {
+    return authenticatedFetch('/api/admin/authors')
+  },
+
+  // 작가 생성
+  createAuthor: (data: { name: string; bio?: string; profile_image_url?: string }) => {
+    return authenticatedFetch('/api/admin/authors', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
   }
 }

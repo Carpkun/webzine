@@ -5,36 +5,65 @@ import Navigation from './Navigation'
 import { AuthStatus } from './auth/AuthStatus'
 
 export default function Header() {
-  const [isDarkMode, setIsDarkMode] = useState(false)
+  const [isDarkMode, setIsDarkMode] = useState(true) // 기본값을 true로 설정
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   // 다크모드 상태 초기화 및 적용
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme')
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    // 클라이언트 사이드에서만 실행
+    if (typeof window === 'undefined') return
     
-    const shouldBeDark = savedTheme === 'dark' || (!savedTheme && prefersDark)
+    const savedTheme = localStorage.getItem('theme')
+    
+    // 저장된 테마가 있으면 사용, 없으면 다크모드를 기본값으로 설정
+    const shouldBeDark = savedTheme ? savedTheme === 'dark' : true
+    
+    console.log('다크모드 초기화:', { savedTheme, shouldBeDark })
+    
     setIsDarkMode(shouldBeDark)
     
     if (shouldBeDark) {
       document.documentElement.classList.add('dark')
+      if (!savedTheme) {
+        localStorage.setItem('theme', 'dark') // 초기 설정 저장
+        console.log('다크모드 기본값 저장됨')
+      }
     } else {
       document.documentElement.classList.remove('dark')
     }
   }, [])
 
-  // 다크모드 토글
+  // 다크모드 토글 (더 강력한 방식)
   const toggleDarkMode = () => {
+    console.log('=== 다크모드 토글 시작 ===')
+    console.log('현재 상태:', isDarkMode)
+    console.log('현재 HTML 클래스:', document.documentElement.className)
+    
     const newDarkMode = !isDarkMode
+    
+    // 상태 업데이트
     setIsDarkMode(newDarkMode)
     
+    // DOM 클래스 강제 업데이트
+    const htmlElement = document.documentElement
+    
     if (newDarkMode) {
-      document.documentElement.classList.add('dark')
+      htmlElement.classList.remove('light') // 기존 light 클래스 제거
+      htmlElement.classList.add('dark')
+      htmlElement.setAttribute('data-theme', 'dark')
       localStorage.setItem('theme', 'dark')
+      console.log('다크모드 활성화 완료')
     } else {
-      document.documentElement.classList.remove('dark')
+      htmlElement.classList.remove('dark') // 기존 dark 클래스 제거
+      htmlElement.classList.add('light')
+      htmlElement.setAttribute('data-theme', 'light')
       localStorage.setItem('theme', 'light')
+      console.log('라이트모드 활성화 완료')
     }
+    
+    console.log('변경 후 HTML 클래스:', document.documentElement.className)
+    console.log('변경 후 data-theme:', document.documentElement.getAttribute('data-theme'))
+    console.log('=== 다크모드 토글 완료 ===')
   }
 
   return (

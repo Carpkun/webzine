@@ -97,6 +97,23 @@ export default function TiptapEditor({
       attributes: {
         class: `prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-[200px] p-4 ${className}`,
       },
+      handleKeyDown: (view, event) => {
+        if (event.key === 'Enter') {
+          if (event.shiftKey) {
+            // Shift + Enter: Hard Break
+            event.preventDefault()
+            const { tr, selection } = view.state
+            const hardBreak = view.state.schema.nodes.hardBreak.create()
+            const newTr = tr.replaceSelectionWith(hardBreak)
+            view.dispatch(newTr)
+            return true
+          } else {
+            // 일반 Enter: 기본 동작 허용 (빈 문단도 생성)
+            return false // 기본 Tiptap 동작 사용
+          }
+        }
+        return false
+      },
     },
   })
 
@@ -405,9 +422,9 @@ export default function TiptapEditor({
         }
 
         .ProseMirror p {
-          margin: 0.75rem 0;
+          margin: 0.5rem 0;
           line-height: 1.6;
-          min-height: 1.6em;
+          min-height: 1.6em; /* 빈 문단도 최소 높이 보장 */
         }
 
         .ProseMirror p:first-child {
@@ -418,19 +435,49 @@ export default function TiptapEditor({
           margin-bottom: 0;
         }
 
-        /* 빈 문단 확실히 표시 */
+        .ProseMirror br {
+          display: block;
+          margin: 0.5rem 0;
+          content: "";
+        }
+
+        .ProseMirror .editor-hard-break {
+          display: block;
+          margin: 0.25rem 0;
+        }
+
+        .ProseMirror .editor-paragraph {
+          margin: 0.5rem 0;
+          line-height: 1.6;
+          min-height: 1.6em;
+        }
+        
+        /* 빈 문단 스타일 개선 */
         .ProseMirror p:empty {
-          margin: 0.75rem 0 !important;
+          margin: 0.5rem 0 !important;
           line-height: 1.6 !important;
           min-height: 1.6em !important;
           display: block !important;
+          position: relative;
         }
-
-        .ProseMirror p:empty::before {
-          content: "";
+        
+        .ProseMirror p:empty:after {
+          content: "\00a0"; /* Non-breaking space */
           display: inline-block;
+          visibility: hidden;
           width: 0;
           height: 1.6em;
+        }
+        
+        /* 에디터에서 빈 문단을 시각적으로 표시 */
+        .ProseMirror[contenteditable="true"] p:empty:before {
+          content: "";
+          position: absolute;
+          pointer-events: none;
+          color: transparent;
+          height: 1.6em;
+          width: 1px;
+          border-left: 1px solid transparent;
         }
 
         .ProseMirror p.is-editor-empty:first-child::before {
@@ -439,16 +486,6 @@ export default function TiptapEditor({
           float: left;
           height: 0;
           pointer-events: none;
-        }
-
-        .ProseMirror br {
-          display: block;
-          margin: 0.25rem 0;
-        }
-
-        .ProseMirror .editor-hard-break {
-          display: block;
-          margin: 0.25rem 0;
         }
 
         .ProseMirror h1, .ProseMirror h2, .ProseMirror h3,

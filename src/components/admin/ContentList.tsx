@@ -251,7 +251,7 @@ export default function ContentList({
       unfeature: '일반'
     }[action]
 
-    if (!confirm(`선택된 ${selectedIds.length}개 항목을 ${actionText}로 변경하시겠습니까?`)) {
+    if (!confirm(`선택된 ${selectedIds.length}개 항목을 ${actionText}로 변경하시갠습니까?`)) {
       return
     }
 
@@ -276,6 +276,66 @@ export default function ContentList({
     }
   }
 
+  // 일괄 삭제 (개별 삭제를 순차적으로 수행)
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) {
+      alert('선택된 항목이 없습니다.')
+      return
+    }
+
+    const selectedContents = contents.filter(content => selectedIds.includes(content.id))
+    const contentTitles = selectedContents.map(content => `\"${content.title}\"`).slice(0, 3)
+    const titlePreview = contentTitles.join(', ') + (selectedContents.length > 3 ? ` 외 ${selectedContents.length - 3}개` : '')
+
+    if (!confirm(`선택된 ${selectedIds.length}개 콘텐츠를 삭제하시걠습니까?\\n\\n${titlePreview}\\n\\n이 작업은 되돌릴 수 없으며, 관련 댓글과 작가 데이터도 함께 삭제될 수 있습니다.`)) {
+      return
+    }
+
+    let successCount = 0
+    let errorCount = 0
+    const errors: string[] = []
+
+    try {
+      // 각 콘텐츠를 순차적으로 삭제
+      for (const contentId of selectedIds) {
+        try {
+          const response = await adminAPI.deleteContent(contentId)
+          const result = await response.json()
+          
+          if (response.ok) {
+            successCount++
+          } else {
+            errorCount++
+            const content = selectedContents.find(c => c.id === contentId)
+            errors.push(`"${content?.title || contentId}": ${result.error || '삭제 실패'}`)
+          }
+        } catch (error) {
+          errorCount++
+          const content = selectedContents.find(c => c.id === contentId)
+          errors.push(`"${content?.title || contentId}": 네트워크 오류`)
+        }
+      }
+
+      // 결과 메시지 표시
+      let message = `${successCount}개 콘텐츠가 성공적으로 삭제되었습니다.`
+      if (errorCount > 0) {
+        message += `\n\n${errorCount}개 항목에서 오류가 발생했습니다:`
+        message += '\n' + errors.slice(0, 3).join('\n')
+        if (errors.length > 3) {
+          message += `\n... 외 ${errors.length - 3}개`
+        }
+      }
+      
+      alert(message)
+      setSelectedIds([])
+      setSelectAll(false)
+      loadContents()
+    } catch (error) {
+      console.error('일괄 삭제 오류:', error)
+      alert('일괄 삭제 중 예상치 못한 오류가 발생했습니다.')
+    }
+  }
+
   // 콘텐츠 삭제 확인
   const handleDeleteClick = (content: Content) => {
     if (confirm(`"${content.title}" 콘텐츠를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`)) {
@@ -283,14 +343,15 @@ export default function ContentList({
     }
   }
 
-  // 날짜 포맷팅
+  // 날짜 포매팅 - 24시간 형식
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('ko-KR', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      hour12: false // 24시간 형식 사용
     })
   }
 
@@ -466,6 +527,12 @@ export default function ContentList({
               >
                 일반
               </button>
+              <button
+                onClick={handleBulkDelete}
+                className="px-3 py-1.5 text-xs font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+              >
+                삭제
+              </button>
             </div>
           </div>
         </div>
@@ -487,7 +554,7 @@ export default function ContentList({
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full table-fixed">
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
                   <th className="w-8 px-4 py-3 text-left">
@@ -498,25 +565,25 @@ export default function ContentList({
                       className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
                     />
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="w-72 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     제목
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="w-24 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     카테고리
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="w-20 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     작성자
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="w-24 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     상태
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="w-20 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     통계
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="w-32 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     작성일
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="w-32 px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     작업
                   </th>
                 </tr>
@@ -554,7 +621,7 @@ export default function ContentList({
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                       {content.author_name}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
+                    <td className="px-3 py-4 whitespace-nowrap">
                       <div className="flex gap-1">
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                           content.is_published 
@@ -570,10 +637,11 @@ export default function ContentList({
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       <div className="text-xs">
                         <div>👀 {content.view_count}</div>
                         <div>❤️ {content.likes_count}</div>
+                        <div>💬 {content.comments_count || 0}</div>
                       </div>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
@@ -583,7 +651,7 @@ export default function ContentList({
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => onStatusChange(content.id, 'toggle_published')}
-                          className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                          className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium cursor-pointer ${
                             content.is_published
                               ? 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
                               : 'text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300'
@@ -594,7 +662,7 @@ export default function ContentList({
                         </button>
                         <button
                           onClick={() => onStatusChange(content.id, 'toggle_featured')}
-                          className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                          className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium cursor-pointer ${
                             content.featured
                               ? 'text-yellow-600 dark:text-yellow-400 hover:text-yellow-800 dark:hover:text-yellow-300'
                               : 'text-gray-400 dark:text-gray-500 hover:text-yellow-600 dark:hover:text-yellow-400'
@@ -605,14 +673,14 @@ export default function ContentList({
                         </button>
                         <button
                           onClick={() => onEdit(content)}
-                          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 px-2 py-1 rounded text-xs"
+                          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 px-2 py-1 rounded text-xs cursor-pointer"
                           title="수정"
                         >
                           ✏️
                         </button>
                         <button
                           onClick={() => handleDeleteClick(content)}
-                          className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 px-2 py-1 rounded text-xs"
+                          className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 px-2 py-1 rounded text-xs cursor-pointer"
                           title="삭제"
                         >
                           🗑️

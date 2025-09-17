@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { Content } from '@/lib/types'
 import { 
   isEssayContent, 
@@ -19,6 +20,7 @@ import { useContentContext } from '../contexts/ContentContext'
 import PoetryToggle from './PoetryToggle'
 import LikeButton from './LikeButton'
 import CommentSection from './comments/CommentSection'
+import AuthorSection from './AuthorSection'
 import { 
   isValidImageUrl, 
   // getImageProps,
@@ -118,7 +120,18 @@ export default function ContentDetail({ content }: ContentDetailProps) {
         </h1>
         
         <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-400 mb-6">
-          <span>작성자: {content.author_name || '익명'}</span>
+          <span>
+            작성자: {content.author_id ? (
+              <Link 
+                href={`/author/${content.author_id}`}
+                className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium transition-colors"
+              >
+                {content.author_name || '익명'}
+              </Link>
+            ) : (
+              <span className="font-medium">{content.author_name || '익명'}</span>
+            )}
+          </span>
           <span>•</span>
           <span>
             {new Date(content.created_at).toLocaleDateString('ko-KR', {
@@ -143,9 +156,47 @@ export default function ContentDetail({ content }: ContentDetailProps) {
         {isEssayContent(content) && (
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
             <div 
-              className="prose prose-lg prose-slate dark:prose-invert max-w-none leading-relaxed"
+              className="prose prose-lg prose-slate dark:prose-invert max-w-none leading-relaxed content-display"
               dangerouslySetInnerHTML={{ __html: content.content }}
             />
+            
+            {/* 콘텐츠 표시용 스타일 */}
+            <style jsx>{`
+              :global(.content-display p) {
+                margin: 0.75rem 0 !important;
+                line-height: 1.6 !important;
+                min-height: 1.6em !important;
+              }
+              
+              :global(.content-display p:empty) {
+                margin: 0.75rem 0 !important;
+                line-height: 1.6 !important;
+                min-height: 1.6em !important;
+                display: block !important;
+              }
+              
+              :global(.content-display p:empty::before) {
+                content: "";
+                display: inline-block;
+                width: 0;
+                height: 1.6em;
+              }
+              
+              :global(.content-display p:first-child) {
+                margin-top: 0 !important;
+              }
+              
+              :global(.content-display p:last-child) {
+                margin-bottom: 0 !important;
+              }
+              
+              :global(.content-display br) {
+                display: block;
+                margin: 0.25rem 0;
+                content: "";
+                line-height: 1.6;
+              }
+            `}</style>
           </div>
         )}
 
@@ -168,8 +219,7 @@ export default function ContentDetail({ content }: ContentDetailProps) {
                     })}
                     quality={95}
                     priority
-                    placeholder="blur"
-                    blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCAxMCAxMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBmaWxsPSIjRkZGRkZGIiBmaWxsLW9wYWNpdHk9IjAuMDIiLz4KPC9zdmc+"
+                    unoptimized
                     onError={() => setImageError(true)}
                   />
                 </div>
@@ -190,7 +240,7 @@ export default function ContentDetail({ content }: ContentDetailProps) {
               <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-6">
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-3">작품 설명</h3>
                 <div 
-                  className="prose prose-gray dark:prose-invert max-w-none"
+                  className="prose prose-gray dark:prose-invert max-w-none content-display"
                   dangerouslySetInnerHTML={{ __html: content.content }}
                 />
               </div>
@@ -221,6 +271,7 @@ export default function ContentDetail({ content }: ContentDetailProps) {
                     // 이미지 확대 기능 (실제 구현에서는 모달이나 lightbox 사용)
                     window.open(content.image_url, '_blank')
                   }}
+                  unoptimized
                   onError={() => setImageError(true)}
                 />
               ) : (
@@ -240,7 +291,7 @@ export default function ContentDetail({ content }: ContentDetailProps) {
               <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-6">
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-3">작품 해설</h3>
                 <div 
-                  className="prose prose-gray dark:prose-invert max-w-none"
+                  className="prose prose-gray dark:prose-invert max-w-none content-display"
                   dangerouslySetInnerHTML={{ __html: content.content }}
                 />
               </div>
@@ -276,7 +327,7 @@ export default function ContentDetail({ content }: ContentDetailProps) {
               <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-6">
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-3">작품 소개</h3>
                 <div 
-                  className="prose prose-gray dark:prose-invert max-w-none"
+                  className="prose prose-gray dark:prose-invert max-w-none content-display"
                   dangerouslySetInnerHTML={{ __html: content.content }}
                 />
               </div>
@@ -304,6 +355,15 @@ export default function ContentDetail({ content }: ContentDetailProps) {
           </svg>
           공유
         </button>
+      </div>
+      
+      {/* 작가 소개 섹션 */}
+      <div className="mt-8">
+        <AuthorSection 
+          authorId={content.author_id}
+          authorName={content.author_name || '익명'}
+          currentContentId={content.id}
+        />
       </div>
       
       {/* 댓글 섹션 */}

@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { ContentCreateParams, ContentListParams, ContentCategory } from '../../../../../lib/types'
+import { requireAdmin, createAuthErrorResponse } from '../../../../../lib/auth-middleware'
+import { validateContentData } from '../../../../../lib/validation'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -10,34 +12,13 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 // GET: 콘텐츠 목록 조회 (관리자용)
 export async function GET(request: NextRequest) {
   try {
-    // Authorization 헤더에서 토큰 추출
-    const authHeader = request.headers.get('authorization')
-    console.log('=== GET 요청 인증 확인 시작 ===')
-    console.log('인증 헤더:', authHeader ? 'Bearer 토큰 있음' : '인증 헤더 없음')
-    
-    if (!authHeader?.startsWith('Bearer ')) {
-      console.log('인증 실패: Bearer 토큰이 없음')
-      return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
+    // 관리자 권한 검증
+    const authResult = await requireAdmin(request)
+    if (!authResult.isAuthenticated || !authResult.isAdmin) {
+      return createAuthErrorResponse(authResult)
     }
     
-    const token = authHeader.split(' ')[1]
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
-    console.log('인증 결과:', { user: user?.email, error: authError?.message })
-    
-    if (authError || !user) {
-      console.log('인증 실패:', authError?.message || 'No user found')
-      return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
-    }
-    console.log('관리자 인증 성공:', user.email)
-    
-    // 사용자 토큰으로 인증된 클라이언트 생성
-    const supabaseWithAuth = createClient(supabaseUrl, supabaseServiceKey, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      }
-    })
+    console.log('관리자 인증 성공:', authResult.userId)
 
     const { searchParams } = new URL(request.url)
     
@@ -55,8 +36,8 @@ export async function GET(request: NextRequest) {
       search: searchParams.get('search') || undefined
     }
 
-    // 기본 쿼리 구성
-    let query = supabaseWithAuth
+    // 기본 쿼리 구성 (Service Role Key 사용)
+    let query = supabaseAdmin
       .from('contents')
       .select('*')
 
@@ -88,7 +69,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
     
     // 전체 개수 조회를 위한 별도 쿼리
-    let countQuery = supabaseWithAuth
+    let countQuery = supabaseAdmin
       .from('contents')
       .select('*', { count: 'exact', head: true })
     
@@ -142,43 +123,26 @@ export async function GET(request: NextRequest) {
 // POST: 새 콘텐츠 생성
 export async function POST(request: NextRequest) {
   try {
-    // Authorization 헤더에서 토큰 추출
-    const authHeader = request.headers.get('authorization')
-    console.log('=== POST 요청 인증 확인 시작 ===')
-    console.log('인증 헤더:', authHeader ? 'Bearer 토큰 있음' : '인증 헤더 없음')
-    
-    if (!authHeader?.startsWith('Bearer ')) {
-      console.log('인증 실패: Bearer 토큰이 없음')
-      return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
+    // 관리자 권한 검증
+    const authResult = await requireAdmin(request)
+    if (!authResult.isAuthenticated || !authResult.isAdmin) {
+      return createAuthErrorResponse(authResult)
     }
     
-    const token = authHeader.split(' ')[1]
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
-    console.log('인증 결과:', { user: user?.email, error: authError?.message })
-    
-    if (authError || !user) {
-      console.log('인증 실패:', authError?.message || 'No user found')
-      return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
-    }
-    console.log('관리자 인증 성공:', user.email)
-    
-    // 사용자 토큰으로 인증된 클라이언트 생성
-    const supabaseWithAuth = createClient(supabaseUrl, supabaseServiceKey, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      }
-    })
+    console.log('관리자 인증 성공:', authResult.userId)
 
-    const body: ContentCreateParams = await request.json()
+    const rawBody = await request.json()
     
-    // 필수 필드 검증
-    if (!body.title || !body.content || !body.category || !body.author_name) {
+    // 데이터 검증 및 sanitization
+    const validation = validateContentData(rawBody)
+    if (!validation.isValid) {
       return NextResponse.json({ 
-        error: '제목, 내용, 카테고리, 작성자는 필수 항목입니다.' 
+        error: '입력 데이터가 올바르지 않습니다.',
+        details: validation.errors
       }, { status: 400 })
     }
+    
+    const body = validation.sanitized as ContentCreateParams
 
     // 카테고리별 필수 필드 검증
     if (body.category === 'poetry' && (!body.original_text || !body.translation)) {
@@ -205,8 +169,38 @@ export async function POST(request: NextRequest) {
       .replace(/\s+/g, '-')
       .substring(0, 50)
 
+    // author_id가 없는 경우 author_name으로 작가 찾기 또는 생성
+    let finalAuthorId = body.author_id
+    let finalAuthorName = body.author_name
+    
+    if (!finalAuthorId && finalAuthorName) {
+      // author_name으로 기존 작가 찾기
+      const { data: existingAuthor } = await supabaseAdmin
+        .from('authors')
+        .select('id, name')
+        .eq('name', finalAuthorName.trim())
+        .single()
+      
+      if (existingAuthor) {
+        finalAuthorId = existingAuthor.id
+      } else {
+        // 새 작가 생성
+        const { data: newAuthor, error: authorError } = await supabaseAdmin
+          .from('authors')
+          .insert([{ name: finalAuthorName.trim() }])
+          .select()
+          .single()
+        
+        if (!authorError && newAuthor) {
+          finalAuthorId = newAuthor.id
+        }
+      }
+    }
+
     const insertData = {
       ...body,
+      author_id: finalAuthorId,
+      author_name: finalAuthorName,
       slug,
       is_published: body.is_published ?? false,
       featured: body.featured ?? false,
@@ -216,7 +210,7 @@ export async function POST(request: NextRequest) {
       updated_at: new Date().toISOString()
     }
 
-    const { data, error } = await supabaseWithAuth
+    const { data, error } = await supabaseAdmin
       .from('contents')
       .insert([insertData])
       .select()

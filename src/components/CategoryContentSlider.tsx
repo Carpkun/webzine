@@ -2,8 +2,9 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { Content } from '../../lib/types'
+import { Content, isVideoContent, isPhotoContent, isCalligraphyContent } from '../../lib/types'
 import { formatDate } from '../utils/dateUtils'
+import { getVideoThumbnailUrl, isValidImageUrl } from '../utils/imageOptimization'
 
 interface CategoryContentSliderProps {
   contents: Content[]
@@ -199,18 +200,30 @@ export default function CategoryContentSlider({
                     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden h-[400px] flex flex-col">
                       {/* 이미지 영역 - 고정 높이 */}
                       <div className="h-48 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-700 dark:to-gray-800 relative overflow-hidden flex-shrink-0">
-                        {content.image_url ? (
-                          <img 
-                            src={content.image_url} 
-                            alt={content.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            draggable={false}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <span className="text-4xl opacity-50">{categoryIcon}</span>
-                          </div>
-                        )}
+                        {(() => {
+                          // 사진, 서화 콘텐츠의 이미지 URL
+                          let imageUrl = null
+                          if (isPhotoContent(content) || isCalligraphyContent(content)) {
+                            imageUrl = content.image_url
+                          }
+                          // 비디오 콘텐츠의 썸네일 URL 추출
+                          else if (isVideoContent(content) && content.video_url && content.video_platform) {
+                            imageUrl = getVideoThumbnailUrl(content.video_url, content.video_platform)
+                          }
+                          
+                          return imageUrl && isValidImageUrl(imageUrl) ? (
+                            <img 
+                              src={imageUrl} 
+                              alt={content.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              draggable={false}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <span className="text-4xl opacity-50">{categoryIcon}</span>
+                            </div>
+                          )
+                        })()}
                       </div>
                       
                       {/* 콘텐츠 정보 - 유연한 높이 */}

@@ -3,6 +3,16 @@
 
 // ===== 데이터베이스 테이블 타입 =====
 
+// Authors 테이블 - 작가 정보
+export interface Author {
+  id: string; // UUID
+  name: string;
+  bio?: string | null;
+  profile_image_url?: string | null;
+  created_at: string; // ISO 날짜 문자열
+  updated_at: string; // ISO 날짜 문자열
+}
+
 // Contents 테이블 - 메인 콘텐츠
 export interface Content {
   // 기본 필드
@@ -11,6 +21,7 @@ export interface Content {
   content: string;
   category: ContentCategory;
   author_name: string;
+  author_id?: string | null; // 작가 ID (authors 테이블 참조)
   created_at: string; // ISO 날짜 문자열
   updated_at: string; // ISO 날짜 문자열
   likes_count: number;
@@ -32,6 +43,7 @@ export interface Content {
 
   // 추가 정보
   view_count: number;
+  comments_count: number; // 댓글 수
   featured: boolean;
   additional_data?: Record<string, unknown>; // JSONB 필드
   
@@ -161,6 +173,7 @@ export interface ContentCreateParams {
   content: string;
   category: ContentCategory;
   author_name: string;
+  author_id?: string | null; // 작가 ID (선택사항)
   is_published?: boolean;
   
   // 카테고리별 필드
@@ -278,6 +291,17 @@ export interface CategoryStats {
 export interface Database {
   public: {
     Tables: {
+      authors: {
+        Row: Author;
+        Insert: Omit<Author, 'id' | 'created_at' | 'updated_at'> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Omit<Author, 'id' | 'created_at'>> & {
+          updated_at?: string;
+        };
+      };
       contents: {
         Row: Content;
         Insert: Omit<Content, 'id' | 'created_at' | 'updated_at'> & {

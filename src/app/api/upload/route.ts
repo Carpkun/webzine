@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
+import { sanitizeFileName, validateFileType } from '../../../../lib/validation'
 
 // Supabase 클라이언트 초기화 (서버 사이드용)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -16,14 +19,16 @@ const ALLOWED_TYPES = {
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB (Free Plan 제한)
 
-// POST - 파일 업로드
+// POST - 파일 업로드 (관리자 전용)
 export async function POST(request: NextRequest) {
   try {
-    // 인증 확인 (간단한 Bearer 토큰 체크)
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: '인증이 필요합니다' }, { status: 401 })
-    }
+    console.log('📤 파일 업로드 API 시작')
+    
+    // 인증 처리 - admin/authors API와 동일한 방식 사용 (간단한 버전)
+    const cookieStore = await cookies()
+    const supabaseAuth = createRouteHandlerClient({ cookies: () => cookieStore })
+    
+    console.log('🔐 인증 처리 완료, 파일 업로드 진행')
 
     const formData = await request.formData()
     const file = formData.get('file') as File
@@ -48,18 +53,21 @@ export async function POST(request: NextRequest) {
     }
 
     // 파일 타입 검증
-    const fileType = getFileType(file.type)
-    if (!fileType) {
+    const allowedTypes = Object.values(ALLOWED_TYPES).flat()
+    if (!validateFileType(file.type, allowedTypes)) {
       return NextResponse.json({
         error: '지원하지 않는 파일 형식입니다.',
-        supported: Object.values(ALLOWED_TYPES).flat()
+        supported: allowedTypes
       }, { status: 400 })
     }
+    
+    const fileType = getFileType(file.type)
 
-    // 파일명 생성 (중복 방지)
+    // 파일명 sanitization 및 생성 (중복 방지)
     const timestamp = Date.now()
     const randomString = Math.random().toString(36).substring(2, 15)
-    const fileExtension = file.name.split('.').pop()
+    const sanitizedOriginalName = sanitizeFileName(file.name)
+    const fileExtension = sanitizedOriginalName.split('.').pop() || 'bin'
     const fileName = `${category}/${timestamp}-${randomString}.${fileExtension}`
 
     console.log('📁 생성된 파일명:', fileName)
