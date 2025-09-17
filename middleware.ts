@@ -81,11 +81,16 @@ function detectSuspiciousActivity(request: NextRequest): boolean {
  * 클라이언트 IP 주소 추출
  */
 function getClientIP(request: NextRequest): string {
-  return request.ip ||
+  // NextRequest에서 IP 추출 (Vercel/Edge Runtime 환경)
+  const ip = (request as any)?.ip || 
          request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
          request.headers.get('x-real-ip') ||
          request.headers.get('x-client-ip') ||
+         request.headers.get('cf-connecting-ip') || // Cloudflare
+         request.headers.get('x-forwarded') ||
          'unknown'
+  
+  return ip
 }
 
 /**
