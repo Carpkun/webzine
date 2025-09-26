@@ -2,6 +2,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+// 인라인 캐시 설정
+const CACHE_3MIN = {
+  maxAge: 180,
+  staleWhileRevalidate: 900,
+  cdnMaxAge: 180
+}
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
@@ -70,13 +77,21 @@ export async function GET(request: NextRequest) {
       }, { status: 500 })
     }
     
-    return NextResponse.json({
+    const responseData = {
       data: data || [],
       count: count || 0,
       page,
       limit,
       totalPages: Math.ceil((count || 0) / limit)
-    })
+    }
+    
+    const response = NextResponse.json(responseData)
+    
+    // 콘텐츠 목록에 3분 캐싱 적용 (새 콘텐츠가 자주 추가될 수 있음)
+    response.headers.set('Cache-Control', `public, s-maxage=${CACHE_3MIN.maxAge}, stale-while-revalidate=${CACHE_3MIN.staleWhileRevalidate}`)
+    response.headers.set('CDN-Cache-Control', `public, s-maxage=${CACHE_3MIN.cdnMaxAge}`)
+    
+    return response
     
   } catch (error) {
     console.error('Simple API 서버 오류:', error)

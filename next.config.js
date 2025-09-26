@@ -115,6 +115,12 @@ const nextConfig = {
 
   serverExternalPackages: ['bcryptjs'],
 
+  // 성능 최적화 설정
+  experimental: {
+    optimizeServerReact: true, // 서버 React 최적화
+    webpackBuildWorker: true, // Webpack 빌드 워커 사용
+  },
+
   // 웹팩 설정
   webpack: (config, { isServer }) => {
     // 클라이언트 사이드에서 서버 전용 모듈 제외
@@ -124,6 +130,40 @@ const nextConfig = {
         fs: false,
         net: false,
         tls: false,
+      }
+    }
+
+    // 번들 최적화
+    if (!isServer) {
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          ...config.optimization?.splitChunks,
+          cacheGroups: {
+            ...config.optimization?.splitChunks?.cacheGroups,
+            // Supabase 전용 쮽크
+            supabase: {
+              test: /[\\/]node_modules[\\/]@supabase[\\/]/,
+              name: 'supabase',
+              chunks: 'all',
+              priority: 10,
+            },
+            // TipTap 에디터 전용 쮽크
+            tiptap: {
+              test: /[\\/]node_modules[\\/]@tiptap[\\/]/,
+              name: 'tiptap',
+              chunks: 'all',
+              priority: 10,
+            },
+            // react-dropzone 관리자 전용 쮽크
+            dropzone: {
+              test: /[\\/]node_modules[\\/]react-dropzone[\\/]/,
+              name: 'dropzone',
+              chunks: 'all',
+              priority: 10,
+            },
+          },
+        },
       }
     }
 

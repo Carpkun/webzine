@@ -2,6 +2,9 @@ import { notFound } from 'next/navigation'
 import { ContentCategory } from "../../../../lib/types";
 import CategoryPageClient from './CategoryPageClient'
 
+// ISR: 5분마다 재검증
+export const revalidate = 300
+
 interface CategoryPageProps {
   params: Promise<{
     slug: string

@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 
+// 인라인 캐시 설정
+const CACHE_5MIN = {
+  maxAge: 300,
+  staleWhileRevalidate: 1800,
+  cdnMaxAge: 300
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -20,11 +27,14 @@ export async function GET(
     // 오프셋 계산
     const offset = (page - 1) * limit
 
-    // 기본 쿼리 구성
+    // 기본 쿼리 구성 (필요한 필드만 선택)
     let query = supabase
       .from('contents')
       .select(`
-        *,
+        id, title, content, category, author_name, author_id, 
+        created_at, updated_at, view_count, likes_count, 
+        is_published, slug, thumbnail_url, meta_description,
+        image_url, video_url, video_platform,
         authors!inner(id, name, bio, profile_image_url)
       `)
       .eq('authors.id', id)
@@ -47,10 +57,10 @@ export async function GET(
       )
     }
 
-    // 작가 정보도 함께 조회
+    // 작가 정보도 함께 조회 (필요한 필드만 선택)
     const { data: author, error: authorError } = await supabase
       .from('authors')
-      .select('*')
+      .select('id, name, bio, profile_image_url, created_at')
       .eq('id', id)
       .single()
 
@@ -75,7 +85,7 @@ export async function GET(
 
     const { count: totalCount } = await countQuery
 
-    return NextResponse.json({
+    const responseData = {
       contents,
       author,
       pagination: {
@@ -86,7 +96,15 @@ export async function GET(
         hasNext: page < Math.ceil((totalCount || 0) / limit),
         hasPrev: page > 1
       }
-    })
+    }
+    
+    const response = NextResponse.json(responseData)
+    
+    // 작가별 콘텐츠 목록에 5분 캐싱 적용
+    response.headers.set('Cache-Control', `public, s-maxage=${CACHE_5MIN.maxAge}, stale-while-revalidate=${CACHE_5MIN.staleWhileRevalidate}`)
+    response.headers.set('CDN-Cache-Control', `public, s-maxage=${CACHE_5MIN.cdnMaxAge}`)
+    
+    return response
   } catch (error) {
     console.error('API 오류:', error)
     return NextResponse.json(

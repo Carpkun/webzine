@@ -1,7 +1,19 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react'
-import FileUploader from '../upload/FileUploader'
+import dynamic from 'next/dynamic'
+
+// FileUploader를 동적 로딩으로 최적화 (관리자 전용)
+const FileUploader = dynamic(() => import('../upload/FileUploader'), {
+  ssr: false,
+  loading: () => (
+    <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center animate-pulse">
+      <div className="h-12 w-12 bg-gray-300 dark:bg-gray-600 rounded mx-auto mb-4" />
+      <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-48 mx-auto mb-2" />
+      <div className="h-3 bg-gray-300 dark:bg-gray-600 rounded w-32 mx-auto" />
+    </div>
+  )
+})
 
 interface MediaItem {
   name: string

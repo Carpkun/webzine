@@ -7,7 +7,15 @@ import { Content, ContentCategory } from '../../lib/types'
 export async function getContentById(id: string): Promise<Content | null> {
   const { data, error } = await supabase
     .from('contents')
-    .select('*')
+    .select(`
+      id, title, content, category, author_name, author_id,
+      created_at, updated_at, view_count, likes_count,
+      is_published, slug, thumbnail_url, meta_description, meta_keywords,
+      image_url, image_exif, video_url, video_platform,
+      original_text, translation, artwork_size, artwork_material,
+      performance_date, performance_venue, featured, tts_url,
+      tts_duration, tts_generated_at, tts_file_size, tts_chunks_count, tts_status
+    `)
     .eq('id', id)
     .single()
 
@@ -28,7 +36,11 @@ export async function getRelatedContents(
 ): Promise<Content[]> {
   const { data, error } = await supabase
     .from('contents')
-    .select('*')
+    .select(`
+      id, title, content, category, author_name, author_id,
+      created_at, view_count, likes_count, slug, thumbnail_url,
+      image_url, meta_description
+    `)
     .eq('category', category)
     .neq('id', currentContentId)
     .order('created_at', { ascending: false })

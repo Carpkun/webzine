@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
+import ResourceHints from './ResourceHints'
 import { Content } from '../lib/types'
 import { 
   isEssayContent, 
@@ -181,6 +182,25 @@ export default function ContentDetail({ content }: ContentDetailProps) {
 
   return (
     <>
+      {/* 리소스 프리로딩 */}
+      <ResourceHints 
+        apiEndpoints={[
+          content.author_id ? `/api/authors/${content.author_id}` : undefined,
+          content.author_id ? `/api/authors/${content.author_id}/contents?limit=4` : undefined,
+          `/api/contents/${content.id}/comments`,
+        ].filter(Boolean) as string[]}
+        images={[
+          content.image_url && isValidImageUrl(content.image_url) ? content.image_url : undefined,
+          content.thumbnail_url ? content.thumbnail_url : undefined
+        ].filter(Boolean) as string[]}
+        customResources={[
+          {
+            href: `/category/${content.category}`,
+            rel: 'prefetch'
+          }
+        ]}
+      />
+      
       {/* 히어로 섹션 - 제목만 표시 */}
       <section className="bg-gradient-to-b from-indigo-900 via-purple-900 to-gray-900 text-white py-16 lg:py-24">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">

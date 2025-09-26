@@ -1,5 +1,8 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+
+// ISR: 10분마다 재검증 (작가 정보는 비교적 안정적)
+export const revalidate = 600
 import Image from 'next/image'
 import Link from 'next/link'
 import Header from '../../../components/Header'
@@ -22,11 +25,14 @@ async function getAuthorData(id: string, page: number = 1, category?: string) {
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
     
-    // 작가별 콘텐츠 직접 조회
+    // 작가별 콘텐츠 직접 조회 (필요한 필드만 선택)
     let query = supabase
       .from('contents')
       .select(`
-        *,
+        id, title, content, category, author_name, author_id,
+        created_at, updated_at, view_count, likes_count,
+        slug, thumbnail_url, image_url, meta_description,
+        video_url, video_platform,
         authors!inner(id, name, bio, profile_image_url)
       `)
       .eq('authors.id', id)
@@ -50,10 +56,10 @@ async function getAuthorData(id: string, page: number = 1, category?: string) {
       return null
     }
     
-    // 작가 정보 조회
+    // 작가 정보 조회 (필요한 필드만 선택)
     const { data: author, error: authorError } = await supabase
       .from('authors')
-      .select('*')
+      .select('id, name, bio, profile_image_url, created_at')
       .eq('id', id)
       .single()
     
@@ -176,7 +182,10 @@ export default async function AuthorPage({ params, searchParams }: AuthorPagePro
                         alt={`${author.name} 작가 프로필`}
                         fill
                         className="object-cover"
-                        unoptimized
+                        quality={85}
+                        sizes="128px"
+                        placeholder="blur"
+                        blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD//gA7Q1JFQVRPUjogZ2QtanBlZyB2MS4wICh1c2luZyBJSkcgSlBFRyB2ODApLCBxdWFsaXR5ID0gODUK/9sAhAAQERU="
                       />
                     </div>
                   ) : (
