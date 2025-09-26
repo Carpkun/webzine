@@ -38,32 +38,36 @@ export default function AuthorSection({ authorId, authorName, currentContentId }
       }
 
       try {
-        // 작가 정보 조회
-        const authorResponse = await fetch(`/api/authors/${authorId}`)
+        // 작가 정보와 작품 목록을 병렬로 조회 (성능 최적화)
+        const [authorResponse, worksResponse] = await Promise.all([
+          fetch(`/api/authors/${authorId}`),
+          fetch(`/api/authors/${authorId}/contents?limit=4`) // 현재 콘텐츠 제외를 위해 4개 가져오기
+        ])
+
+        // 작가 정보 처리
         if (authorResponse.ok) {
           const authorData = await authorResponse.json()
           setAuthor(authorData)
-
-          // 작가의 다른 작품들 조회 (최대 3개)
-          const worksResponse = await fetch(`/api/authors/${authorId}/contents?limit=4`) // 현재 콘텐츠 제외를 위해 4개 가져오기
-          if (worksResponse.ok) {
-            const worksData = await worksResponse.json()
-            let works = worksData.contents || []
-            
-            // 현재 콘텐츠 제외
-            if (currentContentId) {
-              works = works.filter((work: any) => work.id !== currentContentId)
-            }
-            
-            // 최대 3개로 제한
-            setAuthorWorks(works.slice(0, 3))
-          }
         } else {
           setAuthor({
             id: '',
             name: authorName,
             created_at: new Date().toISOString()
           })
+        }
+
+        // 작품 목록 처리
+        if (worksResponse.ok) {
+          const worksData = await worksResponse.json()
+          let works = worksData.contents || []
+          
+          // 현재 콘텐츠 제외
+          if (currentContentId) {
+            works = works.filter((work: any) => work.id !== currentContentId)
+          }
+          
+          // 최대 3개로 제한
+          setAuthorWorks(works.slice(0, 3))
         }
       } catch (err) {
         console.error('작가 정보 조회 실패:', err)
@@ -117,7 +121,10 @@ export default function AuthorSection({ authorId, authorName, currentContentId }
                   alt={`${author.name} 작가`}
                   fill
                   className="object-cover"
-                  unoptimized
+                  quality={85}
+                  sizes="64px"
+                  placeholder="blur"
+                  blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD//gA7Q1JFQVRPUjogZ2QtanBlZyB2MS4wICh1c2luZyBJSkcgSlBFRyB2ODApLCBxdWFsaXR5ID0gODUK/9sAhAAQERU="
                 />
               </div>
             ) : (
