@@ -22,13 +22,9 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB (Free Plan 제한)
 // POST - 파일 업로드 (관리자 전용)
 export async function POST(request: NextRequest) {
   try {
-    console.log('📤 파일 업로드 API 시작')
-    
     // 인증 처리 - admin/authors API와 동일한 방식 사용 (간단한 버전)
     const cookieStore = await cookies()
     const supabaseAuth = createRouteHandlerClient({ cookies: () => cookieStore })
-    
-    console.log('🔐 인증 처리 완료, 파일 업로드 진행')
 
     const formData = await request.formData()
     const file = formData.get('file') as File
@@ -38,12 +34,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '파일이 필요합니다' }, { status: 400 })
     }
 
-    console.log('📤 파일 업로드 요청:', {
-      name: file.name,
-      type: file.type,
-      size: file.size,
-      category
-    })
 
     // 파일 크기 검증
     if (file.size > MAX_FILE_SIZE) {
@@ -70,7 +60,6 @@ export async function POST(request: NextRequest) {
     const fileExtension = sanitizedOriginalName.split('.').pop() || 'bin'
     const fileName = `${category}/${timestamp}-${randomString}.${fileExtension}`
 
-    console.log('📁 생성된 파일명:', fileName)
 
     // Supabase Storage 버킷 확인/생성
     const bucketName = 'webzine-media'
@@ -94,7 +83,6 @@ export async function POST(request: NextRequest) {
       .from(bucketName)
       .getPublicUrl(fileName)
 
-    console.log('✅ 파일 업로드 성공:', publicUrl)
 
     return NextResponse.json({
       success: true,
@@ -127,7 +115,6 @@ export async function GET(request: NextRequest) {
     const bucketName = 'webzine-media'
     let path = category || ''
 
-    console.log('📋 파일 목록 조회:', { category, limit, offset })
 
     const { data, error } = await supabase.storage
       .from(bucketName)
@@ -154,7 +141,6 @@ export async function GET(request: NextRequest) {
       ).data.publicUrl
     })) || []
 
-    console.log(`✅ 파일 목록 조회 완료: ${filesWithUrls.length}개`)
 
     return NextResponse.json({
       data: filesWithUrls,
@@ -179,7 +165,6 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: '파일명이 필요합니다' }, { status: 400 })
     }
 
-    console.log('🗑️ 파일 삭제 요청:', fileName)
 
     const bucketName = 'webzine-media'
     const { error } = await supabase.storage
@@ -191,7 +176,6 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    console.log('✅ 파일 삭제 완료:', fileName)
 
     return NextResponse.json({
       success: true,
@@ -237,7 +221,6 @@ async function ensureBucketExists(bucketName: string) {
   const bucketExists = buckets?.some(bucket => bucket.name === bucketName)
   
   if (!bucketExists) {
-    console.log('📦 버킷 생성:', bucketName)
     
     const { error } = await supabase.storage.createBucket(bucketName, {
       public: true,

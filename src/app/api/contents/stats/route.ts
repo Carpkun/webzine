@@ -8,8 +8,6 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 export async function GET() {
   try {
-    console.log('📈 카테고리 통계 조회 시작...')
-    
     const stats: Record<string, number> = {}
     const categories = ['essay', 'poetry', 'photo', 'calligraphy', 'video']
     
@@ -33,10 +31,7 @@ export async function GET() {
     const categoryResults = await Promise.all(categoryPromises)
     categoryResults.forEach(({ category, count }) => {
       stats[category] = count
-      console.log(`📋 ${category}: ${count}개`)
     })
-    
-    console.log('🏁 카테고리 통계 완료:', stats)
     
     return NextResponse.json({
       stats,
@@ -44,7 +39,7 @@ export async function GET() {
     })
     
   } catch (error) {
-    console.error('❌ 카테고리 통계 조회 실패:', error)
+    console.error('카테고리 통계 조회 실패:', error)
     return NextResponse.json({
       error: 'Failed to fetch category stats',
       details: error instanceof Error ? error.message : 'Unknown error'

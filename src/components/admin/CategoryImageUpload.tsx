@@ -101,9 +101,10 @@ export default function CategoryImageUpload({
         return null
       }
 
-      const exifr = await import('exifr')
+      // exifr 라이브러리를 동적 임포트로 번들 크기 최적화
+      const { parse } = await import('exifr')
       
-      const rawExif = await exifr.parse(file, {
+      const rawExif = await parse(file, {
         pick: [
           'Make', 'Model', 'LensModel', 'LensInfo',
           'ISO', 'FNumber', 'ExposureTime', 'FocalLength',

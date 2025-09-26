@@ -77,11 +77,11 @@ export default function PhotoExifInfo({
           return
         }
 
-        // 이미지 URL에서 직접 EXIF 추출 (동적 import 사용)
-        const exifr = await import('exifr')
+        // 이미지 URL에서 직접 EXIF 추출 (동적 import으로 번들 크기 최적화)
+        const { parse } = await import('exifr')
         
         // 이미지 URL에서 EXIF 데이터 추출
-        const rawExif = await exifr.parse(imageUrl, {
+        const rawExif = await parse(imageUrl, {
           // 필요한 EXIF 태그만 추출하여 성능 최적화
           pick: [
             // 기본 정보

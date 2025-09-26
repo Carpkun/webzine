@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { Content } from '../lib/types'
 import { 
   isEssayContent, 
@@ -17,18 +18,66 @@ import {
   // toggleLike
 } from '../lib/contentUtils'
 import { useContentContext } from '../contexts/ContentContext'
+import { useInView } from 'react-intersection-observer'
 import PoetryToggle from './PoetryToggle'
 import LikeButton from './LikeButton'
-import CommentSection from './comments/CommentSection'
-import AuthorSection from './AuthorSection'
-import PhotoExifInfo from './PhotoExifInfo'
-import TTSPlayer from './TTSPlayer'
 import {
   isValidImageUrl,
   // getImageProps,
   // getFallbackImageUrl,
   generateResponsiveSizes
 } from '../utils/imageOptimization'
+
+// 성능 최적화를 위한 동적 임포트
+const TTSPlayer = dynamic(() => import('./TTSPlayer'), {
+  ssr: false,
+  loading: () => <div className="animate-pulse h-10 bg-gray-200 dark:bg-gray-700 rounded" />
+})
+
+const CommentSection = dynamic(() => import('./comments/CommentSection'), {
+  ssr: false,
+  loading: () => (
+    <div className="animate-pulse">
+      <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-32 mb-4" />
+      <div className="space-y-3">
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded" />
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
+      </div>
+    </div>
+  )
+})
+
+const PhotoExifInfo = dynamic(() => import('./PhotoExifInfo'), {
+  ssr: false,
+  loading: () => (
+    <div className="animate-pulse mb-6">
+      <div className="bg-gray-200 dark:bg-gray-700 rounded-lg p-4">
+        <div className="h-5 bg-gray-300 dark:bg-gray-600 rounded w-24 mb-3" />
+        <div className="grid grid-cols-2 gap-2">
+          <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded" />
+          <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-3/4" />
+        </div>
+      </div>
+    </div>
+  )
+})
+
+// AuthorSection을 Intersection Observer 기반 지연 로딩으로 최적화
+const LazyAuthorSection = dynamic(() => import('./AuthorSection'), {
+  ssr: false,
+  loading: () => (
+    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-6 animate-pulse border border-gray-200 dark:border-gray-700">
+      <div className="h-6 bg-gray-300 dark:bg-gray-600 rounded w-32 mb-4" />
+      <div className="flex items-center gap-4">
+        <div className="w-16 h-16 bg-gray-300 dark:bg-gray-700 rounded-full" />
+        <div className="flex-1">
+          <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-32 mb-2" />
+          <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-48" />
+        </div>
+      </div>
+    </div>
+  )
+})
 
 interface ContentDetailProps {
   content: Content
@@ -37,6 +86,13 @@ interface ContentDetailProps {
 export default function ContentDetail({ content }: ContentDetailProps) {
   const { updateContentViews } = useContentContext()
   const [imageError, setImageError] = useState(false)
+  
+  // AuthorSection 지연 로딩을 위한 Intersection Observer
+  const { ref: authorRef, inView: authorInView } = useInView({
+    threshold: 0.1,
+    rootMargin: '100px 0px',
+    triggerOnce: true // 한 번만 로드
+  })
   
   // 더미 URL 감지 함수
   const isDummyUrl = (url: string | null) => {
@@ -266,9 +322,10 @@ export default function ContentDetail({ content }: ContentDetailProps) {
                       tablet: '90vw',
                       desktop: '80vw'
                     })}
-                    quality={95}
-                    priority
-                    unoptimized
+                    quality={85}
+                    priority={false}
+                    placeholder="blur"
+                    blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD//gA7Q1JFQVRPUjogZ2QtanBlZyB2MS4wICh1c2luZyBJSkcgSlBFRyB2ODApLCBxdWFsaXR5ID0gODUK/9sAhAAQERU="
                     onError={() => setImageError(true)}
                     onClick={() => {
                       // 이미지 확대 기능 (실제 구현에서는 모달이나 lightbox 사용)
@@ -322,7 +379,10 @@ export default function ContentDetail({ content }: ContentDetailProps) {
                     // 이미지 확대 기능 (실제 구현에서는 모달이나 lightbox 사용)
                     window.open(content.image_url, '_blank')
                   }}
-                  unoptimized
+                  quality={85}
+                  sizes="(max-width: 768px) 100vw, (max-width: 1024px) 80vw, 70vw"
+                  placeholder="blur"
+                  blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD//gA7Q1JFQVRPUjogZ2QtanBlZyB2MS4wICh1c2luZyBJSkcgSlBFRyB2ODApLCBxdWFsaXR5ID0gODUK/9sAhAAQERU="
                   onError={() => setImageError(true)}
                 />
               ) : (
@@ -456,13 +516,15 @@ export default function ContentDetail({ content }: ContentDetailProps) {
           </button>
         </div>
         
-        {/* 작가 소개 섹션 */}
-        <div className="mt-8 px-4 sm:px-6 lg:px-8">
-          <AuthorSection 
-            authorId={content.author_id}
-            authorName={content.author_name || '익명'}
-            currentContentId={content.id}
-          />
+        {/* 작가 소개 섹션 - Intersection Observer 기반 지연 로딩 */}
+        <div ref={authorRef} className="mt-8 px-4 sm:px-6 lg:px-8">
+          {authorInView && (
+            <LazyAuthorSection 
+              authorId={content.author_id}
+              authorName={content.author_name || '익명'}
+              currentContentId={content.id}
+            />
+          )}
         </div>
       
         {/* 댓글 섹션 */}

@@ -16,8 +16,6 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get('sortBy') || 'created_at'
     const sortOrder = searchParams.get('sortOrder') || 'desc'
     
-    console.log('🔍 Simple API 쿼리 시작:', { category, page, limit, search, sortBy, sortOrder })
-    
     // 기본 쿼리 - 필수 필드만 선택
     let query = supabase
       .from('contents')
@@ -65,14 +63,12 @@ export async function GET(request: NextRequest) {
     const { data, error, count } = await query
     
     if (error) {
-      console.error('❌ Simple API 쿼리 오류:', error)
+      console.error('Simple API 쿼리 오류:', error)
       return NextResponse.json({ 
         error: 'Database query failed',
         details: error.message 
       }, { status: 500 })
     }
-    
-    console.log(`✅ Simple API 쿼리 완료: ${data?.length || 0}개`)
     
     return NextResponse.json({
       data: data || [],
@@ -83,7 +79,7 @@ export async function GET(request: NextRequest) {
     })
     
   } catch (error) {
-    console.error('❌ Simple API 서버 오류:', error)
+    console.error('Simple API 서버 오류:', error)
     return NextResponse.json({ 
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
