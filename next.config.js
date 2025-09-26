@@ -1,3 +1,7 @@
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true'
+})
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // 이미지 최적화 설정
@@ -127,4 +131,4 @@ const nextConfig = {
   }
 }
 
-module.exports = nextConfig
+module.exports = withBundleAnalyzer(nextConfig)

@@ -18,9 +18,9 @@ import {
   // toggleLike
 } from '../lib/contentUtils'
 import { useContentContext } from '../contexts/ContentContext'
+import { useInView } from 'react-intersection-observer'
 import PoetryToggle from './PoetryToggle'
 import LikeButton from './LikeButton'
-import AuthorSection from './AuthorSection'
 import {
   isValidImageUrl,
   // getImageProps,
@@ -62,6 +62,23 @@ const PhotoExifInfo = dynamic(() => import('./PhotoExifInfo'), {
   )
 })
 
+// AuthorSection을 Intersection Observer 기반 지연 로딩으로 최적화
+const LazyAuthorSection = dynamic(() => import('./AuthorSection'), {
+  ssr: false,
+  loading: () => (
+    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-6 animate-pulse border border-gray-200 dark:border-gray-700">
+      <div className="h-6 bg-gray-300 dark:bg-gray-600 rounded w-32 mb-4" />
+      <div className="flex items-center gap-4">
+        <div className="w-16 h-16 bg-gray-300 dark:bg-gray-700 rounded-full" />
+        <div className="flex-1">
+          <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-32 mb-2" />
+          <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-48" />
+        </div>
+      </div>
+    </div>
+  )
+})
+
 interface ContentDetailProps {
   content: Content
 }
@@ -69,6 +86,13 @@ interface ContentDetailProps {
 export default function ContentDetail({ content }: ContentDetailProps) {
   const { updateContentViews } = useContentContext()
   const [imageError, setImageError] = useState(false)
+  
+  // AuthorSection 지연 로딩을 위한 Intersection Observer
+  const { ref: authorRef, inView: authorInView } = useInView({
+    threshold: 0.1,
+    rootMargin: '100px 0px',
+    triggerOnce: true // 한 번만 로드
+  })
   
   // 더미 URL 감지 함수
   const isDummyUrl = (url: string | null) => {
@@ -492,13 +516,15 @@ export default function ContentDetail({ content }: ContentDetailProps) {
           </button>
         </div>
         
-        {/* 작가 소개 섹션 */}
-        <div className="mt-8 px-4 sm:px-6 lg:px-8">
-          <AuthorSection 
-            authorId={content.author_id}
-            authorName={content.author_name || '익명'}
-            currentContentId={content.id}
-          />
+        {/* 작가 소개 섹션 - Intersection Observer 기반 지연 로딩 */}
+        <div ref={authorRef} className="mt-8 px-4 sm:px-6 lg:px-8">
+          {authorInView && (
+            <LazyAuthorSection 
+              authorId={content.author_id}
+              authorName={content.author_name || '익명'}
+              currentContentId={content.id}
+            />
+          )}
         </div>
       
         {/* 댓글 섹션 */}
