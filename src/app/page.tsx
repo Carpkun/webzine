@@ -3,6 +3,7 @@
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import CategoryContentSlider from "../components/CategoryContentSlider";
+import ResourceHints from "../components/ResourceHints";
 import { useLatestContentsByCategory } from '../hooks/useLatestContentsByCategory'
 
 export default function Home() {
@@ -20,6 +21,28 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col font-gowun">
+      {/* 리소스 프리로딩 */}
+      <ResourceHints 
+        apiEndpoints={[
+          '/api/contents/simple',
+          '/api/contents/stats',
+        ]}
+        customResources={[
+          {
+            href: '/category/essay',
+            rel: 'prefetch'
+          },
+          {
+            href: '/category/poetry', 
+            rel: 'prefetch'
+          },
+          {
+            href: '/category/photo',
+            rel: 'prefetch'
+          }
+        ]}
+      />
+      
       {/* 헤더 */}
       <Header />
 

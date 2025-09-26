@@ -12,7 +12,8 @@ const geistSans = Geist({
   display: "swap", // font-display: swap 추가
   fallback: ["system-ui", "arial", "sans-serif"],
   preload: true,
-  adjustFontFallback: true
+  adjustFontFallback: true,
+  weight: ['400', '500', '600', '700'], // 사용할 웨이트만 명시
 });
 
 const geistMono = Geist_Mono({
@@ -21,7 +22,8 @@ const geistMono = Geist_Mono({
   display: "swap",
   fallback: ["'Courier New'", "monospace"],
   preload: true,
-  adjustFontFallback: true
+  adjustFontFallback: true,
+  weight: ['400', '500'], // 사용할 웨이트만 명시
 });
 
 export const metadata: Metadata = {
@@ -98,6 +100,16 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <head>
+        {/* 리소스 프리로딩 및 DNS 프리페치 */}
+        <link rel="preconnect" href="https://oeeznxdrubsutvezyhxi.supabase.co" />
+        <link rel="dns-prefetch" href="https://oeeznxdrubsutvezyhxi.supabase.co" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        
+        {/* 중요한 API 엔드포인트 프리로드 */}
+        <link rel="prefetch" href="/api/contents/simple" />
+        <link rel="prefetch" href="/api/contents/stats" />
+        
         {/* JSON-LD 기본 구조화 데이터 */}
         <script
           type="application/ld+json"

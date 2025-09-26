@@ -28,11 +28,16 @@ export function useLatestContentsByCategory(limit: number = 6): UseLatestContent
       // 각 카테고리별로 최신 콘텐츠를 가져옴 - useContents 방식을 참고
       for (const category of categories) {
         try {
-          // 기본 쿼리 설정 - useContents에서 사용하는 방식과 동일
+          // 기본 쿼리 설정 - 필요한 필드만 선택하여 성능 최적화
           let query = supabase
             .from('contents')
-            .select('*')
+            .select(`
+              id, title, content, category, author_name, author_id,
+              created_at, view_count, likes_count, is_published,
+              slug, thumbnail_url, image_url, meta_description
+            `)
             .eq('category', category)
+            .eq('is_published', true)
             .order('created_at', { ascending: false })
             .limit(limit)
 
@@ -43,9 +48,8 @@ export function useLatestContentsByCategory(limit: number = 6): UseLatestContent
             console.error(`❌ Error details:`, JSON.stringify(categoryError, null, 2))
             results[category] = []
           } else {
-            // 발행된 콘텐츠만 필터링 (클라이언트 사이드에서)
-            const publishedContents = (data || []).filter(content => content.is_published)
-            results[category] = publishedContents
+            // 이미 서버에서 is_published=true로 필터링됨
+            results[category] = data || []
           }
         } catch (catError) {
           console.error(`❌ Unexpected error for ${category}:`, catError)

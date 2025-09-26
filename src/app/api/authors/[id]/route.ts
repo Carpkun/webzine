@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+// 인라인 캐시 설정
+const CACHE_10MIN = {
+  maxAge: 600,
+  staleWhileRevalidate: 3600,
+  cdnMaxAge: 600
+}
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
@@ -12,10 +19,10 @@ export async function GET(
   try {
     const { id } = await params
 
-    // 작가 정보 조회
+    // 작가 정보 조회 (필요한 필드만 선택)
     const { data: author, error } = await supabaseAdmin
       .from('authors')
-      .select('*')
+      .select('id, name, bio, profile_image_url, created_at')
       .eq('id', id)
       .single()
 
@@ -27,7 +34,13 @@ export async function GET(
       )
     }
 
-    return NextResponse.json(author)
+    const response = NextResponse.json(author)
+    
+    // 작가 정보는 안정적이므로 10분 캐싱 적용
+    response.headers.set('Cache-Control', `public, s-maxage=${CACHE_10MIN.maxAge}, stale-while-revalidate=${CACHE_10MIN.staleWhileRevalidate}`)
+    response.headers.set('CDN-Cache-Control', `public, s-maxage=${CACHE_10MIN.cdnMaxAge}`)
+    
+    return response
   } catch (error) {
     // 로깅 제거 (성능 최적화)
     return NextResponse.json(
