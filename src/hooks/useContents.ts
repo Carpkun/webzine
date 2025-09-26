@@ -50,7 +50,7 @@ export function useContents({
         setStatsLoaded(true)
       }
     } catch (error) {
-      console.error('❌ 카테고리 통계 조회 실패:', error)
+      console.error('카테고리 통계 조회 실패:', error)
     }
   }, [])
 
@@ -59,8 +59,6 @@ export function useContents({
     try {
       setLoading(true)
       setError(null)
-      
-      console.log('🔍 콘텐츠 조회 시작:', { category, search, sortBy, sortOrder, page, limit })
       
       // API 요청 파라미터 구성
       const params = new URLSearchParams({
@@ -88,14 +86,12 @@ export function useContents({
         if (result.data && result.data.length > 0) {
           setContentsList(result.data)
         }
-        
-        console.log(`✅ 콘텐츠 조회 성공: ${result.data.length}개 (총 ${result.count || 0}개)`)
       } else {
         throw new Error(result.error || '콘텐츠 조회 실패')
       }
       
     } catch (err) {
-      console.error('❌ 콘텐츠 조회 오류:', err)
+      console.error('콘텐츠 조회 오류:', err)
       setError(err instanceof Error ? err.message : '콘텐츠를 불러올 수 없습니다.')
       setContents([])
       setTotalCount(0)
